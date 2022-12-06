@@ -1,11 +1,21 @@
 <script lang="ts" setup>
 
 import {ref} from "vue";
+import wxPayApi from "@/api/wxPay";
 
 const billDate = ref('');
+const disabledDate = (time: Date) => {
+  const currentTime = new Date();
+  const beforeDay = new Date(currentTime.getTime() - 24 * 60 * 60 * 1000);
+  return time.getTime() > beforeDay.getTime();
+}
 
-const downloadBill: void = (downloadType: string) => {
-
+const downloadBill = (type: string) => {
+  wxPayApi.downloadBill(type, billDate.value).then((res) => {
+    console.log(res, "rrrrrrrrr");
+  }).catch((error) => {
+    console.log(error)
+  })
 }
 
 </script>
@@ -21,7 +31,8 @@ const downloadBill: void = (downloadType: string) => {
 
       <el-form :inline="true">
         <el-form-item>
-          <el-date-picker v-model="billDate" value-format="yyyy-MM-dd" placeholder="选择账单日期"/>
+          <el-date-picker v-model="billDate" value-format="YYYY-MM-DD" :disabled-date="disabledDate"
+                          placeholder="选择账单日期"/>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="downloadBill('tradebill')">下载交易账单</el-button>

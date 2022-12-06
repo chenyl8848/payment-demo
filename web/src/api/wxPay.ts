@@ -1,4 +1,5 @@
 import request from '@/utils/request';
+import * as cluster from "cluster";
 
 export default {
     nativePay(productId: number) {
@@ -19,6 +20,13 @@ export default {
         return request({
             url: '/api/wx-pay/native/refund/' + orderNo + '/' + reason,
             method: 'post'
+        });
+    },
+
+    downloadBill(type: string, billData: string) {
+        return request({
+            url: '/api/wx-pay/native/downloadBill/' + type + '/' + billData,
+            method: 'get'
         });
     }
 }

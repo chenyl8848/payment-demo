@@ -227,7 +227,7 @@ public class WXPayServiceImpl implements WXPayService {
                 log.info("微信支付查询订单,查询成功,无返回参数");
             } else {
                 log.info("微信支付查询订单,查询失败,响应码:{},返回结果:{}", statusCode, bodyAsString);
-                throw new IOException("request failed");
+                throw new RuntimeException("微信支付查询订单,查询失败,响应码:" + statusCode + ",返回结果:" + bodyAsString);
             }
 
             return bodyAsString;
@@ -336,6 +336,43 @@ public class WXPayServiceImpl implements WXPayService {
 
     }
 
+    @Override
+    public String queryRefund(String refundNo) throws Exception {
+        log.info("微信支付查询退款,退款单号:{}", refundNo);
+
+        String url = String.format(WXApiUrl.DOMESTIC_REFUNDS_QUERY.getUrl(), refundNo);
+        url = wxPayConfig.getDomain().concat(url);
+
+        HttpGet httpGet = new HttpGet(url);
+        httpGet.setHeader("Accept", "application/json");
+
+        //完成签名并执行请求
+        CloseableHttpResponse response = wxPayHttpClient.execute(httpGet);
+
+        try {
+            // 响应状态码
+            int statusCode = response.getStatusLine().getStatusCode();
+            // 响应体
+            String bodyAsString = EntityUtils.toString(response.getEntity());
+
+            if (statusCode == 200) {
+                //处理成功
+                log.info("微信支付查询退款,查询成功,返回参数:{}", bodyAsString);
+            } else if (statusCode == 204) {
+                //处理成功，无返回Body
+                log.info("微信支付查询退款,查询成功,无返回参数");
+            } else {
+                log.info("微信支付查询退款,查询失败,响应码:{},返回结果:{}", statusCode, bodyAsString);
+                throw new RuntimeException("微信支付查询退款,查询失败,响应码:" + statusCode + ",返回结果:" + bodyAsString);
+            }
+
+            return bodyAsString;
+        } finally {
+            response.close();
+        }
+
+    }
+
     /**
      * 关闭订单
      *
@@ -377,6 +414,123 @@ public class WXPayServiceImpl implements WXPayService {
             } else {
                 log.info("微信支付关闭订单,关闭订单失败,响应码:{}", statusCode);
             }
+        } finally {
+            response.close();
+        }
+
+    }
+
+    @Override
+    public void processRefund(Map<String, Object> bodyMap) throws GeneralSecurityException {
+        log.info("处理退款单");
+        // 解密
+        String plainText = decryptFromResource(bodyMap);
+
+        Gson gson = new Gson();
+        HashMap plainMap = gson.fromJson(plainText, HashMap.class);
+        String orderNo = (String) plainMap.get("out_trade_no");
+
+        // 处理重复的通知
+        // 接口调用的幂等性：无论接口被调用多少次，产生的结果是一致的
+        /**
+         * 在对业务数据进行状态检查和处理之前，要采用数据锁进行并发控制，以避免函数重入造成的数据混乱。
+         */
+        // 尝试获取锁：成功获取则立即返回 true,获取失败则立即返回 false,不会一致等待锁的释放
+        if (lock.tryLock()) {
+            try {
+                String orderStatus = orderInfoService.getOrderStatusByOrderNo(orderNo);
+                if (!OrderStatus.REFUND_PROCESSING.getType().equals(orderStatus)) {
+                    return;
+                }
+
+                // 更新订单状态
+                orderInfoService.updateOrderStatusByOrderNo(orderNo, OrderStatus.REFUND_SUCCESS);
+
+                // 记录支付日志
+                refundInfoService.updateRefund(plainText);
+            } finally {
+                // 释放锁
+                lock.unlock();
+            }
+        }
+    }
+
+    @Override
+    public String queryBill(String type, String billDate) throws Exception {
+        log.info("微信支付查询账单,交易日期:{}", billDate);
+        String url = "";
+        if ("tradebill".equals(type)) {
+            url = wxPayConfig.getDomain().concat(WXApiUrl.TRADE_BILLS.getUrl());
+        } else if ("fundflowbill".equals(type)) {
+            url = wxPayConfig.getDomain().concat(WXApiUrl.FUND_FLOW_BILLS.getUrl());
+        } else {
+            throw new IllegalArgumentException("不支持的账单类型");
+        }
+
+        url = url.concat("?bill_date=").concat(billDate);
+
+        // 创建远程调用请求
+        HttpGet httpGet = new HttpGet(url);
+        httpGet.setHeader("Accept", "application/json");
+
+        //完成签名并执行请求
+        CloseableHttpResponse response = wxPayHttpClient.execute(httpGet);
+
+        try {
+            // 响应状态码
+            int statusCode = response.getStatusLine().getStatusCode();
+            // 响应体
+            String bodyAsString = EntityUtils.toString(response.getEntity());
+
+            if (statusCode == 200) {
+                //处理成功
+                log.info("微信支付查询账单,查询成功,返回结果:{}", bodyAsString);
+            } else if (statusCode == 204) {
+                //处理成功，无返回Body
+                log.info("微信支付查询账单,查询成功,无返回参数");
+            } else {
+                log.info("微信支付查询账单,查询失败,响应码:{}", statusCode);
+                throw new RuntimeException("微信支付查询账单,查询失败,响应码:" + statusCode);
+            }
+
+            Gson gson = new Gson();
+            HashMap resultMap = gson.fromJson(bodyAsString, HashMap.class);
+            String downloadUrl = (String) resultMap.get("download_url");
+
+            return downloadUrl;
+        } finally {
+            response.close();
+        }
+    }
+
+    @Override
+    public String downloadBill(String type, String billDate) throws Exception {
+        log.info("微信支付下载账单,账单类型:{},交易日期:{}", type, billDate);
+        String downloadUrl = queryBill(type, billDate);
+
+        // 创建远程调用请求
+        HttpGet httpGet = new HttpGet(downloadUrl);
+        httpGet.setHeader("Accept", "application/json");
+
+        CloseableHttpResponse response = wxPayHttpClient.execute(httpGet);
+        try {
+            // 响应状态码
+            int statusCode = response.getStatusLine().getStatusCode();
+            // 响应体
+            String bodyAsString = EntityUtils.toString(response.getEntity());
+
+            if (statusCode == 200) {
+                //处理成功
+                log.info("微信支付下载账单,查询成功,返回结果:{}", bodyAsString);
+            } else if (statusCode == 204) {
+                //处理成功，无返回Body
+                log.info("微信支付下载账单,查询成功,无返回参数");
+            } else {
+                log.info("微信支付下载账单,查询失败,响应码:{}", statusCode);
+                throw new RuntimeException("微信支付下载账单,查询失败,响应码:" + statusCode);
+            }
+
+            return bodyAsString;
         } finally {
             response.close();
         }

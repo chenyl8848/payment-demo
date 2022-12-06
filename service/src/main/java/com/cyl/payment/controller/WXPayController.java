@@ -128,4 +128,83 @@ public class WXPayController {
         return R.ok();
 
     }
+
+    @ApiOperation("查询退款")
+    @GetMapping("/native/queryRefund/{refundNo}")
+    public R queryRefund(@PathVariable String refundNo) throws Exception {
+        String result = wxPayService.queryRefund(refundNo);
+        return R.ok().setMessage("查询成功").data("result", result);
+    }
+
+    @ApiOperation("退款结果通知")
+    @PostMapping("/native/refund/notify")
+    public String refundNotify(HttpServletRequest request, HttpServletResponse response) {
+        log.info("微信支付退款结果通知");
+
+        Gson gson = new Gson();
+        HashMap<String, Object> responseData = new HashMap<>();
+
+        try {
+            String body = HttpUtil.readData(request);
+            log.info("微信支付退款结果通知,请求参数:{}", body);
+            Map<String, Object> bodyMap = gson.fromJson(body, HashMap.class);
+
+            String requestId = (String) bodyMap.get("id");
+
+            // 签名验证
+            WechatPay2ValidatorUtil wechatPay2ValidatorUtil = new WechatPay2ValidatorUtil(verifier, requestId, body);
+            if (!wechatPay2ValidatorUtil.validate(request)) {
+                log.error("微信支付退款通知,验签失败,通知id:{}", requestId);
+
+                // 失败应答
+                response.setStatus(500);
+
+                responseData.put("code", "ERROR");
+                responseData.put("message", "验签失败");
+
+                return gson.toJson(responseData);
+            }
+
+            //处理订单
+            wxPayService.processRefund(bodyMap);
+
+            // 模拟失败应答
+            // int i = 10 / 0;
+            // 应答超时
+            // TimeUnit.SECONDS.sleep(5);
+
+            // 返回成功应答
+            response.setStatus(200);
+            responseData.put("code", "SUCCESS");
+            responseData.put("message", "成功");
+
+            return gson.toJson(responseData);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            // 返回失败应答
+            response.setStatus(500);
+            responseData.put("code", "ERROR");
+            responseData.put("message", "失败");
+
+            return gson.toJson(responseData);
+        }
+    }
+
+    @ApiOperation("查询账单下载地址")
+    @GetMapping("/native/queryBill/{type}/{billDate}")
+    public R queryBill(@PathVariable String type,
+                       @PathVariable String billDate) throws Exception {
+        String result = wxPayService.queryBill(type, billDate);
+        return R.ok().setMessage("查询成功").data("downloadUrl", result);
+    }
+
+    @ApiOperation("下载账单")
+    @GetMapping("/native/downloadBill/{type}/{billDate}")
+    public R downloadBill(@PathVariable String type,
+                       @PathVariable String billDate) throws Exception {
+        String result = wxPayService.downloadBill(type, billDate);
+        return R.ok().setMessage("查询成功").data("reslt", result);
+    }
 }
+

@@ -21,7 +21,7 @@ public enum WXNotifyUrl {
     /**
      * 退款结果通知
      */
-    REFUND_NOTIFY("/wx-pay/refunds/notify");
+    REFUND_NOTIFY("/wx-pay/native/refund/notify");
 
     /**
      * 类型

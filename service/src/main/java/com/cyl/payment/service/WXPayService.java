@@ -57,4 +57,36 @@ public interface WXPayService {
      */
     void refund(String orderNo, String reason) throws IOException;
 
+    /**
+     * 微信支付查询退款
+     *
+     * @param refundNo 退款单号
+     * @return
+     */
+    String queryRefund(String refundNo) throws Exception;
+
+    /**
+     * 处理退款单
+     *
+     * @param bodyMap
+     */
+    void processRefund(Map<String, Object> bodyMap) throws GeneralSecurityException;
+
+    /**
+     * 微信支付查询账单
+     *
+     * @param type     账单类型：交易账单、资金账单
+     * @param billDate 交易日期
+     * @return
+     */
+    String queryBill(String type, String billDate) throws Exception;
+
+    /**
+     * 下载账单
+     *
+     * @param type     账单类型：交易账单、资金账单
+     * @param billDate 交易日期
+     * @return
+     */
+    String downloadBill(String type, String billDate) throws Exception;
 }
