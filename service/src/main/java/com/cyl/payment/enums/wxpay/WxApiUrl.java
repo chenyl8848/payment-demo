@@ -5,7 +5,7 @@ import lombok.Getter;
 
 @AllArgsConstructor
 @Getter
-public enum WXApiUrl {
+public enum WxApiUrl {
 
     /**
      * Native下单

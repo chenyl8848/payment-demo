@@ -1,5 +1,7 @@
 package com.cyl.payment.service;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Map;
@@ -9,7 +11,7 @@ import java.util.Map;
  * @date 2022-11-27 17:46
  * @description
  */
-public interface WXPayService {
+public interface WxPayService {
     /**
      * 发起支付请求
      *
@@ -89,4 +91,21 @@ public interface WXPayService {
      * @return
      */
     String downloadBill(String type, String billDate) throws Exception;
+
+    /**
+     * V2 版本统一下单
+     *
+     * @param productId  商品
+     * @param remoteAddr 远程地址
+     * @return
+     */
+    Map<String, Object> nativeV2Pay(Long productId, String remoteAddr) throws Exception;
+
+    /**
+     * 微信支付V2版本,支付通知
+     *
+     * @param request
+     * @return
+     */
+    String nativeV2PayNotify(HttpServletRequest request) throws Exception;
 }

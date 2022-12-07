@@ -5,7 +5,7 @@ import lombok.Getter;
 
 @AllArgsConstructor
 @Getter
-public enum WXNotifyUrl {
+public enum WxNotifyUrl {
 
     /**
      * 支付通知

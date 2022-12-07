@@ -8,7 +8,6 @@ import {ElMessage} from "element-plus";
 import {useRouter} from "vue-router";
 
 const productList = ref([]);
-
 const getProductList = () => {
   productApi.list().then(res => {
     productList.value = res.data.productList
@@ -34,10 +33,8 @@ const selectPayType = (payType: string) => {
 
 //确认支付按钮是否禁用
 let payBtnDisabled = ref<boolean>(false);
-
 // 微信支付二维码弹窗
 let codeDialogVisible = ref<boolean>(false);
-
 // 支付二维码
 const codeUrl = ref<string>('');
 // 订单号
@@ -46,7 +43,6 @@ const orderNo = ref<string>('');
 let timer = ref<any>(null);
 // 获取路由器
 const router = useRouter();
-
 
 const queryOrderStatus = (orderNo: string) => {
   orderApi.queryOrderStatus(orderNo).then(res => {
@@ -81,9 +77,6 @@ const toPay = () => {
       orderNo.value = res.data.orderNo;
       codeDialogVisible.value = true;
 
-      console.log(codeUrl, codeUrl.value, res.data.codeUrl)
-      console.log(orderNo, orderNo.value, res.data.orderNo)
-
       // 启动定时器
       timer = setInterval(() => {
         // 查询订单是否支付成功
@@ -92,8 +85,28 @@ const toPay = () => {
     }).catch(error => {
       console.log(error)
     })
+  } else if (payOrder.payType === 'wxpayV2') {
+    wxPayApi.nativePay(toRaw(payOrder.productId)).then(res => {
+      codeUrl.value = res.data.codeUrl;
+      orderNo.value = res.data.orderNo;
+      codeDialogVisible.value = true;
+      // 启动定时器
+      timer = setInterval(() => {
+        // 查询订单是否支付成功
+        queryOrderStatus(orderNo.value);
+      }, 3000);
+    }).catch(error => {
+      console.log(error)
+    })
+  } else if (payOrder.payType === 'alipay') {
+    console.log("alipay..");
+
   } else {
-    codeDialogVisible.value = true;
+    ElMessage.error({
+      message: '支付方式错误',
+      type: 'error'
+    });
+    payBtnDisabled.value = false;
   }
 };
 
@@ -126,7 +139,6 @@ const closeDialog = () => {
         </li>
       </ul>
 
-
       <div class="PaymentChannel_payment-channel-panel">
         <h3 class="PaymentChannel_title">
           选择支付方式
@@ -141,7 +153,21 @@ const closeDialog = () => {
             </div>
             <div class="ChannelOption_channel-info">
               <div class="ChannelOption_channel-label">
-                <div class="ChannelOption_label">微信支付</div>
+                <div class="ChannelOption_label">微信V3支付</div>
+                <div class="ChannelOption_sub-label"></div>
+                <div class="ChannelOption_check-option"></div>
+              </div>
+            </div>
+          </div>
+
+          <div :class="['ChannelOption_payment-channel-option', {current:payOrder.payType === 'wxpayV2'}]"
+               @click="selectPayType('wxpayV2')">
+            <div class="ChannelOption_channel-icon">
+              <img src="../assets/img/wxpay.png" class="ChannelOption_icon">
+            </div>
+            <div class="ChannelOption_channel-info">
+              <div class="ChannelOption_channel-label">
+                <div class="ChannelOption_label">微信V2支付</div>
                 <div class="ChannelOption_sub-label"></div>
                 <div class="ChannelOption_check-option"></div>
               </div>
@@ -166,7 +192,7 @@ const closeDialog = () => {
         </div>
       </div>
 
-      <div class="payButtom">
+      <div class="payButton">
         <el-button
             :disabled="payBtnDisabled"
             type="warning"

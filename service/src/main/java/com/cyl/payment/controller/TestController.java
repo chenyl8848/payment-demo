@@ -1,6 +1,6 @@
 package com.cyl.payment.controller;
 
-import com.cyl.payment.config.WXPayConfig;
+import com.cyl.payment.config.WxPayConfig;
 import com.cyl.payment.vo.R;
 import io.swagger.annotations.Api;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class TestController {
 
     @Autowired
-    private WXPayConfig wxPayConfig;
+    private WxPayConfig wxPayConfig;
 
     @GetMapping("/getWXPayConfig")
     public R getWXPayConfig() {

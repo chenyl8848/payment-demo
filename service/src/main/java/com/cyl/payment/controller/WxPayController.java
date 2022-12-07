@@ -1,6 +1,6 @@
 package com.cyl.payment.controller;
 
-import com.cyl.payment.service.WXPayService;
+import com.cyl.payment.service.WxPayService;
 import com.cyl.payment.util.HttpUtil;
 import com.cyl.payment.util.WechatPay2ValidatorUtil;
 import com.cyl.payment.vo.R;
@@ -27,19 +27,19 @@ import java.util.Map;
  * @date 2022-11-27 17:45
  * @description 微信支付接口
  */
-@Api(tags = "微信支付接口")
+@Api(tags = "微信支付")
 @RestController
 @RequestMapping("/wx-pay")
 @Slf4j
-public class WXPayController {
+public class WxPayController {
 
     @Autowired
-    private WXPayService wxPayService;
+    private WxPayService wxPayService;
 
     @Autowired
     private Verifier verifier;
 
-    @ApiOperation("调用统一API,生成支付二维码")
+    @ApiOperation("统一下单")
     @PostMapping("/native/{productId}")
     public R nativePay(@PathVariable Long productId) throws Exception {
         log.info("发起支付请求,商品：{}", productId);
@@ -50,7 +50,7 @@ public class WXPayController {
         return R.ok().setData(result);
     }
 
-    @ApiOperation("微信支付通知")
+    @ApiOperation("支付通知")
     @PostMapping("/native/notify")
     public String nativeNotify(HttpServletRequest request, HttpServletResponse response) {
 
@@ -103,7 +103,7 @@ public class WXPayController {
 
     }
 
-    @ApiOperation("微信支付取消订单")
+    @ApiOperation("取消订单")
     @PostMapping("/native/cancel/{orderNo}")
     public R cancel(@PathVariable String orderNo) throws Exception {
 
@@ -112,7 +112,7 @@ public class WXPayController {
         return R.ok().setMessage("订单取消成功");
     }
 
-    @ApiOperation("微信支付查询订单")
+    @ApiOperation("查询订单")
     @GetMapping("/native/queryOrder/{orderNo}")
     public R queryOrder(@PathVariable String orderNo) throws Exception {
 
@@ -202,7 +202,7 @@ public class WXPayController {
     @ApiOperation("下载账单")
     @GetMapping("/native/downloadBill/{type}/{billDate}")
     public R downloadBill(@PathVariable String type,
-                       @PathVariable String billDate) throws Exception {
+                          @PathVariable String billDate) throws Exception {
         String result = wxPayService.downloadBill(type, billDate);
         return R.ok().setMessage("查询成功").data("reslt", result);
     }

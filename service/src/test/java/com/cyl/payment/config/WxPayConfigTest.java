@@ -6,20 +6,18 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.security.PrivateKey;
-
 /**
  * @author cyl
  * @date 2022-11-27 11:04
  * @description
  */
 @SpringBootTest
-public class WXPayConfigTest {
+public class WxPayConfigTest {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(WXPayConfigTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(WxPayConfigTest.class);
 
     @Autowired
-    private WXPayConfig wxPayConfig;
+    private WxPayConfig wxPayConfig;
 
     @Test
     public void testGetPrivateKey() {

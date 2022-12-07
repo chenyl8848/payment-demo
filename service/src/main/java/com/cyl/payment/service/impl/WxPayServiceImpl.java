@@ -1,16 +1,19 @@
 package com.cyl.payment.service.impl;
 
-import com.cyl.payment.config.WXPayConfig;
+import com.cyl.payment.config.WxPayConfig;
 import com.cyl.payment.entity.OrderInfo;
 import com.cyl.payment.entity.RefundInfo;
 import com.cyl.payment.enums.OrderStatus;
-import com.cyl.payment.enums.wxpay.WXApiUrl;
-import com.cyl.payment.enums.wxpay.WXNotifyUrl;
-import com.cyl.payment.enums.wxpay.WXTradeState;
+import com.cyl.payment.enums.wxpay.WxApiUrl;
+import com.cyl.payment.enums.wxpay.WxNotifyUrl;
+import com.cyl.payment.enums.wxpay.WxTradeState;
 import com.cyl.payment.service.OrderInfoService;
 import com.cyl.payment.service.PaymentInfoService;
 import com.cyl.payment.service.RefundInfoService;
-import com.cyl.payment.service.WXPayService;
+import com.cyl.payment.service.WxPayService;
+import com.cyl.payment.util.HttpClientUtil;
+import com.cyl.payment.util.HttpUtil;
+import com.github.wxpay.sdk.WXPayUtil;
 import com.google.gson.Gson;
 import com.wechat.pay.contrib.apache.httpclient.util.AesUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
@@ -40,10 +44,10 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 @Service
 @Slf4j
-public class WXPayServiceImpl implements WXPayService {
+public class WxPayServiceImpl implements WxPayService {
 
     @Autowired
-    private WXPayConfig wxPayConfig;
+    private WxPayConfig wxPayConfig;
 
     @Autowired
     private CloseableHttpClient wxPayHttpClient;
@@ -86,7 +90,7 @@ public class WXPayServiceImpl implements WXPayService {
         log.info("调用统一下单API");
         // 2.调用统一下单 API
         //请求URL
-        HttpPost httpPost = new HttpPost(wxPayConfig.getDomain().concat(WXApiUrl.NATIVE_PAY.getUrl()));
+        HttpPost httpPost = new HttpPost(wxPayConfig.getDomain().concat(WxApiUrl.NATIVE_PAY.getUrl()));
         // 请求body参数
         Gson gson = new Gson();
         Map paramMap = new HashMap();
@@ -94,7 +98,7 @@ public class WXPayServiceImpl implements WXPayService {
         paramMap.put("mchid", wxPayConfig.getMchId());
         paramMap.put("description", orderInfo.getTitle());
         paramMap.put("out_trade_no", orderInfo.getOrderNo());
-        paramMap.put("notify_url", wxPayConfig.getNotifyDomain().concat(WXNotifyUrl.NATIVE_NOTIFY.getUrl()));
+        paramMap.put("notify_url", wxPayConfig.getNotifyDomain().concat(WxNotifyUrl.NATIVE_NOTIFY.getUrl()));
 
         Map amountMap = new HashMap();
         amountMap.put("total", orderInfo.getTotalFee());
@@ -205,7 +209,7 @@ public class WXPayServiceImpl implements WXPayService {
 
         log.info("微信支付查询订单,订单号:{}", orderNo);
 
-        String url = String.format(WXApiUrl.ORDER_QUERY_BY_NO.getUrl(), orderNo);
+        String url = String.format(WxApiUrl.ORDER_QUERY_BY_NO.getUrl(), orderNo);
         url = wxPayConfig.getDomain().concat(url).concat("?mchid=").concat(wxPayConfig.getMchId());
         HttpGet httpGet = new HttpGet(url);
         httpGet.setHeader("Accept", "application/json");
@@ -249,7 +253,7 @@ public class WXPayServiceImpl implements WXPayService {
 
         // 获取微信支付订单状态
         String tradeState = (String) resultMap.get("trade_state");
-        if (WXTradeState.SUCCESS.getType().equals(tradeState)) {
+        if (WxTradeState.SUCCESS.getType().equals(tradeState)) {
             log.warn("核实订单已支付,订单号:{}", orderNo);
 
             // 如果确认订单已支付则更新本地订单状态
@@ -258,7 +262,7 @@ public class WXPayServiceImpl implements WXPayService {
             paymentInfoService.createPaymentInfo(queryOrder);
         }
 
-        if (WXTradeState.NOTPAY.getType().equals(tradeState)) {
+        if (WxTradeState.NOTPAY.getType().equals(tradeState)) {
             log.warn("核实订单未支付,订单号:{}", orderNo);
 
             // 如果订单未支付，则调用关闭订单接口
@@ -279,7 +283,7 @@ public class WXPayServiceImpl implements WXPayService {
         RefundInfo refundInfo = refundInfoService.createRefundByOrderNo(orderNo, reason);
 
         // 调用退款 API
-        String url = wxPayConfig.getDomain().concat(WXApiUrl.DOMESTIC_REFUNDS.getUrl());
+        String url = wxPayConfig.getDomain().concat(WxApiUrl.DOMESTIC_REFUNDS.getUrl());
         HttpPost httpPost = new HttpPost(url);
 
         Gson gson = new Gson();
@@ -287,7 +291,7 @@ public class WXPayServiceImpl implements WXPayService {
         paramMap.put("out_trade_no", orderNo);
         paramMap.put("out_refund_no", refundInfo.getRefundNo());
         paramMap.put("reason", reason);
-        paramMap.put("notify_url", wxPayConfig.getDomain().concat(WXNotifyUrl.REFUND_NOTIFY.getUrl()));
+        paramMap.put("notify_url", wxPayConfig.getDomain().concat(WxNotifyUrl.REFUND_NOTIFY.getUrl()));
 
         Map<String, Object> amoutMap = new HashMap<>();
         amoutMap.put("refund", refundInfo.getRefund());
@@ -340,7 +344,7 @@ public class WXPayServiceImpl implements WXPayService {
     public String queryRefund(String refundNo) throws Exception {
         log.info("微信支付查询退款,退款单号:{}", refundNo);
 
-        String url = String.format(WXApiUrl.DOMESTIC_REFUNDS_QUERY.getUrl(), refundNo);
+        String url = String.format(WxApiUrl.DOMESTIC_REFUNDS_QUERY.getUrl(), refundNo);
         url = wxPayConfig.getDomain().concat(url);
 
         HttpGet httpGet = new HttpGet(url);
@@ -382,7 +386,7 @@ public class WXPayServiceImpl implements WXPayService {
         log.info("微信支付关闭订单，订单号:{}", orderNo);
 
         // 创建远程调用请求
-        String url = String.format(WXApiUrl.CLOSE_ORDER_BY_NO.getUrl(), orderNo);
+        String url = String.format(WxApiUrl.CLOSE_ORDER_BY_NO.getUrl(), orderNo);
         url = wxPayConfig.getDomain().concat(url);
         HttpPost httpPost = new HttpPost(url);
 
@@ -460,9 +464,9 @@ public class WXPayServiceImpl implements WXPayService {
         log.info("微信支付查询账单,交易日期:{}", billDate);
         String url = "";
         if ("tradebill".equals(type)) {
-            url = wxPayConfig.getDomain().concat(WXApiUrl.TRADE_BILLS.getUrl());
+            url = wxPayConfig.getDomain().concat(WxApiUrl.TRADE_BILLS.getUrl());
         } else if ("fundflowbill".equals(type)) {
-            url = wxPayConfig.getDomain().concat(WXApiUrl.FUND_FLOW_BILLS.getUrl());
+            url = wxPayConfig.getDomain().concat(WxApiUrl.FUND_FLOW_BILLS.getUrl());
         } else {
             throw new IllegalArgumentException("不支持的账单类型");
         }
@@ -510,7 +514,7 @@ public class WXPayServiceImpl implements WXPayService {
 
         // 创建远程调用请求
         HttpGet httpGet = new HttpGet(downloadUrl);
-        httpGet.setHeader("Accept", "application/json");
+        httpGet.addHeader("Accept", "application/json");
 
         CloseableHttpResponse response = wxPayHttpClient.execute(httpGet);
         try {
@@ -535,6 +539,159 @@ public class WXPayServiceImpl implements WXPayService {
             response.close();
         }
 
+    }
+
+    @Override
+    public Map<String, Object> nativeV2Pay(Long productId, String remoteAddr) throws Exception {
+        log.info("微信支付V2版本,统一下单,商品id:{},客户端ip:{}", productId, remoteAddr);
+
+        // 生成订单
+        OrderInfo orderInfo = orderInfoService.generateOrderByProductId(productId);
+        if (Objects.isNull(orderInfo)) {
+            throw new RuntimeException("生成订单失败");
+        }
+        if (!StringUtils.isEmpty(orderInfo.getCodeUrl())) {
+            // 订单已存在,直接返回
+            log.info("订单已存在,商品id:{},订单号:{}", productId, orderInfo.getOrderNo());
+
+            Map<String, Object> resultMap = new HashMap<>();
+            resultMap.put("codeUrl", orderInfo.getCodeUrl());
+            resultMap.put("orderNo", orderInfo.getOrderNo());
+            return resultMap;
+        }
+
+        HttpClientUtil httpClientUtil = new HttpClientUtil(wxPayConfig.getDomain().concat(WxApiUrl.NATIVE_PAY_V2.getUrl()));
+
+        // 组装接口参数
+        Map<String, String> paramMap = new HashMap<>();
+        paramMap.put("appid", wxPayConfig.getAppid());
+        paramMap.put("mch_id", wxPayConfig.getMchId());
+        paramMap.put("nonce_str", WXPayUtil.generateNonceStr());
+        paramMap.put("body", orderInfo.getTitle());
+        paramMap.put("out_trade_no", orderInfo.getOrderNo());
+
+        // 注意：这里必须使用字符串类型的参数（总金额：分）
+        String totalFee = orderInfo.getTotalFee() + "";
+        paramMap.put("total_fee", totalFee);
+        paramMap.put("spbill_create_ip", remoteAddr);
+        paramMap.put("notify_url", wxPayConfig.getNotifyDomain().concat(WxNotifyUrl.NATIVE_NOTIFY_V2.getUrl()));
+        paramMap.put("trade_type", "NATIVE");
+
+        // 将参数转成 xml 字符串格式，生成带有签名的 xml 格式字符串
+        String paramsXml = WXPayUtil.generateSignedXml(paramMap, wxPayConfig.getPartnerKey());
+        log.info("\n paramsXml：\n" + paramsXml);
+
+        httpClientUtil.setXmlParam(paramsXml);
+        httpClientUtil.setHttps(true);
+
+        // 发送请求
+        httpClientUtil.post();
+
+        // 得到响应结果
+        String resultXml = httpClientUtil.getContent();
+        log.info("\n resultXml：\n" + resultXml);
+
+        // 将 xml 格式转成 map
+        Map<String, String> responseMap = WXPayUtil.xmlToMap(resultXml);
+
+        // 错误处理
+        if ("FAIL".equals(responseMap.get("return_code")) || "FAIL".equals(responseMap.get("result_code"))) {
+            log.info("微信支付V2版本,统一下单,下单失败:{}", resultXml);
+            throw new RuntimeException("微信支付V2版本,统一下单,下单失败");
+        }
+
+        // 支付地址
+        String codeUrl = responseMap.get("code_url");
+        // 订单号
+        String orderNo = orderInfo.getOrderNo();
+
+        orderInfo.setCodeUrl(codeUrl);
+        orderInfoService.saveOrUpdateCodeUrl(orderInfo);
+
+        // 返回支付地址
+        Map<String, Object> resultMap = new HashMap<>();
+        resultMap.put("codeUrl", codeUrl);
+        resultMap.put("orderNo", orderNo);
+
+        return resultMap;
+    }
+
+    @Override
+    public String nativeV2PayNotify(HttpServletRequest request) throws Exception {
+
+        log.info("微信支付V2,支付通知回调");
+        // 应答对象
+        Map<String, String> reponseMap = new HashMap<>();
+
+        // 处理通知参数
+        String notifyBody = HttpUtil.readData(request);
+        log.info("微信支付V2,支付通知回调,请求参数:{}", notifyBody);
+
+        // 验签
+        if (!WXPayUtil.isSignatureValid(notifyBody, wxPayConfig.getPartnerKey())) {
+            log.error("微信支付V2,支付通知回调,验签失败");
+
+            // 返回失败应答
+            reponseMap.put("return_code", "FAIL");
+            reponseMap.put("return_msg", "验签失败");
+
+            String responseXml = WXPayUtil.mapToXml(reponseMap);
+            return responseXml;
+        }
+
+        // 解析 xml 数据
+        Map<String, String> notifyMap = WXPayUtil.xmlToMap(notifyBody);
+        // 判断通信和业务是否成功
+        if (!"SUCCESS".equals(notifyMap.get("return_code")) || !"SUCCESS".equals(notifyMap.get("result_code"))) {
+            log.error("微信支付V2,支付通知回调,业务失败");
+            // 返回失败应答
+            reponseMap.put("return_code", "FAIL");
+            reponseMap.put("return_msg", "失败");
+
+            String responseXml = WXPayUtil.mapToXml(reponseMap);
+            return responseXml;
+        }
+
+        // 获取商户订单号
+        String orderNo = notifyMap.get("out_trade_no");
+        long totalFee = Long.parseLong(notifyMap.get("total_fee"));
+        OrderInfo orderInfo = orderInfoService.getOrderByOrderNo(orderNo);
+
+        //校验返回的订单金额是否与商户侧的订单金额一致
+        if (Objects.isNull(orderInfo) || orderInfo.getTotalFee() != totalFee) {
+            log.error("微信支付V2,支付通知回调,订单不存在或订单金额不一致,订单号:{},微信侧金额:{}", orderNo, totalFee);
+            // 返回失败应答
+            reponseMap.put("return_code", "FAIL");
+            reponseMap.put("return_msg", "失败");
+
+            String responseXml = WXPayUtil.mapToXml(reponseMap);
+            return responseXml;
+        }
+
+        // 处理订单
+        if (lock.tryLock()) {
+            try {
+                // 处理重复的通知
+                // 接口的幂等性：无论接口调用多少起，产生的结果是一致的
+                String orderStatus = orderInfoService.getOrderStatusByOrderNo(orderNo);
+                if (OrderStatus.NOTPAY.getType().equals(orderStatus)) {
+                    // 更新订单状态
+                    orderInfoService.updateOrderStatusByOrderNo(orderNo, OrderStatus.SUCCESS);
+
+                    // 记录支付日志
+                    paymentInfoService.createPaymentInfo(notifyBody);
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        // 返回成功应答
+        reponseMap.put("return_code", "SUCCESS");
+        reponseMap.put("return_msg", "OK");
+
+        String responseXml = WXPayUtil.mapToXml(reponseMap);
+        return responseXml;
     }
 
     /**

@@ -66,6 +66,13 @@
             <version>0.4.8</version>
         </dependency>
 
+        <!-- 微信支付V2 SDK -->
+        <dependency>
+            <groupId>com.github.wxpay</groupId>
+            <artifactId>wxpay-sdk</artifactId>
+            <version>0.0.3</version>
+        </dependency>
+
         <!-- json 处理工具 -->
         <dependency>
             <groupId>com.google.code.gson</groupId>

@@ -12,7 +12,11 @@ const disabledDate = (time: Date) => {
 
 const downloadBill = (type: string) => {
   wxPayApi.downloadBill(type, billDate.value).then((res) => {
-    console.log(res, "rrrrrrrrr");
+    const element = document.createElement('a');
+    element.setAttribute('href', 'data:application/vnd.ms-excel;charset=utf-8,' + encodeURIComponent(res.data.result));
+    element.setAttribute('download', billDate.value + '-' + type);
+    element.style.display = 'none';
+    element.click();
   }).catch((error) => {
     console.log(error)
   })

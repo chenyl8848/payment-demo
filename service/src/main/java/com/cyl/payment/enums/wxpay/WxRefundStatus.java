@@ -5,27 +5,27 @@ import lombok.Getter;
 
 @AllArgsConstructor
 @Getter
-public enum WXTradeState {
+public enum WxRefundStatus {
 
     /**
-     * 支付成功
+     * 退款成功
      */
     SUCCESS("SUCCESS"),
 
     /**
-     * 未支付
-     */
-    NOTPAY("NOTPAY"),
-
-    /**
-     * 已关闭
+     * 退款关闭
      */
     CLOSED("CLOSED"),
 
     /**
-     * 转入退款
+     * 退款处理中
      */
-    REFUND("REFUND");
+    PROCESSING("PROCESSING"),
+
+    /**
+     * 退款异常
+     */
+    ABNORMAL("ABNORMAL");
 
     /**
      * 类型

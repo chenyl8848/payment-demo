@@ -6,11 +6,8 @@ import com.wechat.pay.contrib.apache.httpclient.auth.Verifier;
 import com.wechat.pay.contrib.apache.httpclient.auth.WechatPay2Credentials;
 import com.wechat.pay.contrib.apache.httpclient.auth.WechatPay2Validator;
 import com.wechat.pay.contrib.apache.httpclient.cert.CertificatesManager;
-import com.wechat.pay.contrib.apache.httpclient.exception.HttpCodeException;
-import com.wechat.pay.contrib.apache.httpclient.exception.NotFoundException;
 import com.wechat.pay.contrib.apache.httpclient.util.PemUtil;
 import lombok.Data;
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -19,9 +16,7 @@ import org.springframework.context.annotation.PropertySource;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
 import java.security.PrivateKey;
 
 /**
@@ -35,7 +30,7 @@ import java.security.PrivateKey;
 // 读取配置文件的前缀
 @ConfigurationProperties(prefix = "wxpay")
 @Data
-public class WXPayConfig {
+public class WxPayConfig {
 
     /**
      * 商户号
@@ -71,6 +66,11 @@ public class WXPayConfig {
      * 接收结果通知地址
      */
     private String notifyDomain;
+
+    /**
+     * APIv2密钥
+     */
+    private String partnerKey;
 
     /**
      * 获取商户私钥文件

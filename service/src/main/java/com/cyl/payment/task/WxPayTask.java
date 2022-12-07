@@ -2,10 +2,9 @@ package com.cyl.payment.task;
 
 import com.cyl.payment.entity.OrderInfo;
 import com.cyl.payment.service.OrderInfoService;
-import com.cyl.payment.service.WXPayService;
+import com.cyl.payment.service.WxPayService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -23,7 +22,7 @@ public class WxPayTask {
     private OrderInfoService orderInfoService;
 
     @Autowired
-    private WXPayService wxPayService;
+    private WxPayService wxPayService;
 
     /**
      * 秒 分 时 日 月 周
